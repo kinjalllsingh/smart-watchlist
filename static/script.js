@@ -4,6 +4,15 @@ async function loadWatchlist() {
     const container = document.getElementById("watchlist");
     container.innerHTML = "";
 
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                Your watchlist is empty. Add a stock above to start tracking it.
+            </div>
+        `;
+        return;
+    }
+
     items.forEach(item => {
         const div = document.createElement("div");
         div.className = "stock-card" + (item.meaningful ? " highlight" : "");
@@ -23,7 +32,6 @@ async function loadWatchlist() {
         container.appendChild(div);
     });
 }
-
 async function addStock() {
     const input = document.getElementById("symbol-input");
     const symbol = input.value.trim();

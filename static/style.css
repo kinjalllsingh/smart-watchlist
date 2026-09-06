@@ -40,3 +40,11 @@ button {
     font-size: 0.9em;
     color: #555;
 }
+.empty-state {
+    text-align: center;
+    color: #888;
+    padding: 40px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}

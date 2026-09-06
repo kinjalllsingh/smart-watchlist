@@ -27,24 +27,45 @@ def init_db():
             timestamp REAL NOT NULL
         )
     """)
+    # persists the last known "live" price per symbol, independent of
+    # snapshot history, so a server restart doesn't reset prices to
+    # brand-new random values — this is what makes prices genuinely
+    # persistent rather than living only in memory
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS current_prices (
+            symbol TEXT PRIMARY KEY,
+            price REAL NOT NULL
+        )
+    """)
     conn.commit()
     conn.close()
 
 init_db()
 
-BASE_PRICES = {}
-
-def get_current_price(symbol):
+def get_current_price(conn, symbol):
     is_stale = random.random() < 0.15
 
-    if is_stale and symbol in BASE_PRICES:
-        return round(BASE_PRICES[symbol], 2), True
+    row = conn.execute(
+        "SELECT price FROM current_prices WHERE symbol=?", (symbol,)
+    ).fetchone()
 
-    if symbol not in BASE_PRICES:
-        BASE_PRICES[symbol] = random.uniform(100, 3000)
+    if is_stale and row:
+        return round(row["price"], 2), True
 
-    BASE_PRICES[symbol] *= (1 + random.uniform(-0.03, 0.03))
-    return round(BASE_PRICES[symbol], 2), False
+    if row:
+        base = row["price"]
+    else:
+        base = random.uniform(100, 3000)
+
+    new_price = round(base * (1 + random.uniform(-0.03, 0.03)), 2)
+
+    conn.execute(
+        "INSERT INTO current_prices (symbol, price) VALUES (?, ?) "
+        "ON CONFLICT(symbol) DO UPDATE SET price=excluded.price",
+        (symbol, new_price)
+    )
+
+    return new_price, False
 
 @app.route("/")
 def home():
@@ -57,7 +78,7 @@ def get_watchlist():
     result = []
     for item in items:
         symbol = item["symbol"]
-        current_price, is_stale = get_current_price(symbol)
+        current_price, is_stale = get_current_price(conn, symbol)
 
         history = conn.execute(
             "SELECT * FROM snapshots WHERE symbol=? ORDER BY timestamp DESC LIMIT 6",

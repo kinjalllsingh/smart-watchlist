@@ -18,17 +18,22 @@ async function loadWatchlist() {
         div.className = "stock-card" + (item.meaningful ? " highlight" : "");
 
         let changeText = "New — no history yet";
-        if (item.change_pct !== null) {
-            const arrow = item.change_pct >= 0 ? "▲" : "▼";
-            changeText = `${arrow} ${item.change_pct}% since last check`;
-        }
+if (item.stale) {
+    changeText = "No new data since last check";
+} else if (item.change_pct !== null) {
+    const arrow = item.change_pct >= 0 ? "▲" : "▼";
+    changeText = `${arrow} ${item.change_pct}% since last check`;
+}
 
-        div.innerHTML = `
-            <strong>${item.symbol}</strong>
-            <span>₹${item.price}</span>
-            <span class="change">${changeText}</span>
-            <button onclick="removeStock('${item.symbol}')">Remove</button>
-        `;
+        const staleTag = item.stale ? `<span class="stale-tag">⚠ Data may be delayed</span>` : "";
+
+div.innerHTML = `
+    <strong>${item.symbol}</strong>
+    <span>₹${item.price}</span>
+    <span class="change">${changeText}</span>
+    ${staleTag}
+    <button onclick="removeStock('${item.symbol}')">Remove</button>
+`;
         container.appendChild(div);
     });
 }

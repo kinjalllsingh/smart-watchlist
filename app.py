@@ -35,16 +35,21 @@ init_db()
 BASE_PRICES = {}
 
 def get_current_price(symbol):
+    is_stale = random.random() < 0.15
+
+    if is_stale and symbol in BASE_PRICES:
+        return round(BASE_PRICES[symbol], 2), True
+
     if symbol not in BASE_PRICES:
         BASE_PRICES[symbol] = random.uniform(100, 3000)
+
     BASE_PRICES[symbol] *= (1 + random.uniform(-0.03, 0.03))
-    return round(BASE_PRICES[symbol], 2)
+    return round(BASE_PRICES[symbol], 2), False
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-@app.route("/api/watchlist", methods=["GET"])
 @app.route("/api/watchlist", methods=["GET"])
 def get_watchlist():
     conn = get_db()
@@ -52,9 +57,8 @@ def get_watchlist():
     result = []
     for item in items:
         symbol = item["symbol"]
-        current_price = get_current_price(symbol)
+        current_price, is_stale = get_current_price(symbol)
 
-        # get recent snapshot history for this stock (most recent first)
         history = conn.execute(
             "SELECT * FROM snapshots WHERE symbol=? ORDER BY timestamp DESC LIMIT 6",
             (symbol,)
@@ -67,7 +71,6 @@ def get_watchlist():
             last_price = history[0]["price"]
             change_pct = round(((current_price - last_price) / last_price) * 100, 2)
 
-            # compute this stock's own typical volatility from its recent history
             past_changes = []
             for i in range(len(history) - 1):
                 p_new = history[i]["price"]
@@ -75,24 +78,23 @@ def get_watchlist():
                 past_changes.append(abs((p_new - p_old) / p_old) * 100)
 
             if len(past_changes) >= 2:
-                # enough history: compare today's move to this stock's own average move
                 avg_volatility = sum(past_changes) / len(past_changes)
-                # flag if today's move is at least 1.5x this stock's normal swing
                 is_meaningful = abs(change_pct) > max(avg_volatility * 1.5, 0.5)
             else:
-                # not enough history yet: fall back to a flat rule
                 is_meaningful = abs(change_pct) > 2
 
-        conn.execute(
-            "INSERT INTO snapshots (symbol, price, timestamp) VALUES (?, ?, ?)",
-            (symbol, current_price, time.time())
-        )
+        if not is_stale:
+            conn.execute(
+                "INSERT INTO snapshots (symbol, price, timestamp) VALUES (?, ?, ?)",
+                (symbol, current_price, time.time())
+            )
 
         result.append({
             "symbol": symbol,
             "price": current_price,
             "change_pct": change_pct,
-            "meaningful": is_meaningful
+            "meaningful": is_meaningful,
+            "stale": is_stale
         })
 
     conn.commit()

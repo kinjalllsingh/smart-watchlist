@@ -26,9 +26,15 @@ button {
     margin-bottom: 10px;
     border-radius: 8px;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stock-card > strong {
+    min-width: 90px;
 }
 
 .stock-card.highlight {
@@ -47,4 +53,11 @@ button {
     background: white;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.stale-tag {
+    font-size: 0.75em;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 2px 8px;
+    border-radius: 4px;
 }

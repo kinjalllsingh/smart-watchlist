@@ -1,3 +1,12 @@
+function colorForSymbol(symbol) {
+    let hash = 0;
+    for (let i = 0; i < symbol.length; i++) {
+        hash = symbol.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 62%)`;
+}
+
 async function loadWatchlist() {
     const res = await fetch("/api/watchlist");
     const items = await res.json();
@@ -7,7 +16,7 @@ async function loadWatchlist() {
     if (items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                Your watchlist is empty. Add a stock above to start tracking it.
+                Your watchlist is empty — add a symbol above to start tracking it.
             </div>
         `;
         return;
@@ -15,28 +24,37 @@ async function loadWatchlist() {
 
     items.forEach(item => {
         const div = document.createElement("div");
-        div.className = "stock-card" + (item.meaningful ? " highlight" : "");
+        div.className = "stock-row" + (item.meaningful ? " meaningful" : "");
 
-        let changeText = "New — no history yet";
-if (item.stale) {
-    changeText = "No new data since last check";
-} else if (item.change_pct !== null) {
-    const arrow = item.change_pct >= 0 ? "▲" : "▼";
-    changeText = `${arrow} ${item.change_pct}% since last check`;
-}
+        let changeHTML = `<span class="change neutral">New — no history yet</span>`;
+        if (item.stale) {
+            changeHTML = `<span class="change neutral">No new data since last check</span>`;
+        } else if (item.change_pct !== null) {
+            const dir = item.change_pct >= 0 ? "up" : "down";
+            const arrow = item.change_pct >= 0 ? "▲" : "▼";
+            changeHTML = `<span class="change ${dir}">${arrow} ${item.change_pct}% since last check</span>`;
+        }
 
-        const staleTag = item.stale ? `<span class="stale-tag">⚠ Data may be delayed</span>` : "";
+        const staleTag = item.stale ? `<span class="stale-tag">⚠ delayed</span>` : "";
+        const avatarColor = colorForSymbol(item.symbol);
+        const initials = item.symbol.slice(0, 2);
 
-div.innerHTML = `
-    <strong>${item.symbol}</strong>
-    <span>₹${item.price}</span>
-    <span class="change">${changeText}</span>
-    ${staleTag}
-    <button onclick="removeStock('${item.symbol}')">Remove</button>
-`;
+        div.innerHTML = `
+            <div class="avatar" style="background:${avatarColor}; --ring-color:${avatarColor};">${initials}</div>
+            <div class="info">
+                <div class="symbol">${item.symbol}</div>
+                <div class="meta-line">
+                    <span class="price">₹${item.price}</span>
+                    ${changeHTML}
+                    ${staleTag}
+                </div>
+            </div>
+            <button class="remove-btn" onclick="removeStock('${item.symbol}')">×</button>
+        `;
         container.appendChild(div);
     });
 }
+
 async function addStock() {
     const input = document.getElementById("symbol-input");
     const symbol = input.value.trim();
@@ -54,6 +72,12 @@ async function removeStock(symbol) {
     await fetch(`/api/watchlist/${symbol}`, { method: "DELETE" });
     loadWatchlist();
 }
+
+document.addEventListener("keypress", (e) => {
+    if (e.key === "Enter" && document.activeElement.id === "symbol-input") {
+        addStock();
+    }
+});
 
 loadWatchlist();
 setInterval(loadWatchlist, 15000);

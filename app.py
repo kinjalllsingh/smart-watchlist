@@ -37,6 +37,10 @@ def init_db():
             price REAL NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_snapshots_symbol_time
+        ON snapshots (symbol, timestamp DESC)
+    """)
     conn.commit()
     conn.close()
 
@@ -109,6 +113,19 @@ def get_watchlist():
                 "INSERT INTO snapshots (symbol, price, timestamp) VALUES (?, ?, ?)",
                 (symbol, current_price, time.time())
             )
+            # keep only the most recent 6 snapshots per symbol — that's all
+            # the volatility calculation needs, so older rows are pruned
+            # instead of accumulating forever as the app runs longer and
+            # more users/symbols are added
+            conn.execute("""
+                DELETE FROM snapshots
+                WHERE symbol=? AND id NOT IN (
+                    SELECT id FROM snapshots
+                    WHERE symbol=?
+                    ORDER BY timestamp DESC
+                    LIMIT 6
+                )
+            """, (symbol, symbol))
 
         result.append({
             "symbol": symbol,

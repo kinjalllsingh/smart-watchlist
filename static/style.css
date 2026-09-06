@@ -1,0 +1,42 @@
+body {
+    font-family: sans-serif;
+    max-width: 500px;
+    margin: 40px auto;
+    background: #f5f5f5;
+}
+
+.add-form {
+    margin-bottom: 20px;
+}
+
+input {
+    padding: 8px;
+    width: 200px;
+}
+
+button {
+    padding: 8px 12px;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+.stock-card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stock-card.highlight {
+    border-left: 4px solid orange;
+    background: #fff8f0;
+}
+
+.change {
+    font-size: 0.9em;
+    color: #555;
+}
